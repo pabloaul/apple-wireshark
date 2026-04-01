@@ -98,6 +98,11 @@ local ear_detection = {
     [0x00] = "In Ear"
 }
 
+local bud_role = {
+    [0x01] = "Left is primary",
+    [0x02] = "Right is primary"
+}
+
 local f = aacp_proto.fields
     f.type = ProtoField.uint16("aacp.type", "Type", base.HEX, aacp_type)
     f.service = ProtoField.uint16("aacp.service", "Service", base.DEC)
@@ -189,6 +194,10 @@ function aacp_message(buffer, pinfo, tree)
 
         local secondary = ear_detection[buffer(offset, 1):uint()]
         tree:add(aacp_proto, buffer(offset, 1), "Secondary: " .. secondary)
+        offset = offset + 1
+    elseif type == 0x08 then -- Bud Role
+        local role = buffer(offset, 1):uint()
+        tree:add(aacp_proto, buffer(offset, 1), bud_role[role])
         offset = offset + 1
     end
 
