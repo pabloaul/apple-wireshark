@@ -91,6 +91,13 @@ local battery_status = {
     [0x00] = "Unknown"
 }
 
+local ear_detection = {
+    [0x03] = "Disconnected",
+    [0x02] = "In Case",
+    [0x01] = "Out of Ear",
+    [0x00] = "In Ear"
+}
+
 local f = aacp_proto.fields
     f.type = ProtoField.uint16("aacp.type", "Type", base.HEX, aacp_type)
     f.service = ProtoField.uint16("aacp.service", "Service", base.DEC)
@@ -175,6 +182,14 @@ function aacp_message(buffer, pinfo, tree)
 
             offset = offset + 5
         end
+    elseif type == 0x06 then -- Ear Detection
+        local primary = ear_detection[buffer(offset, 1):uint()]
+        tree:add(aacp_proto, buffer(offset, 1), "Primary: " .. primary)
+        offset = offset + 1
+
+        local secondary = ear_detection[buffer(offset, 1):uint()]
+        tree:add(aacp_proto, buffer(offset, 1), "Secondary: " .. secondary)
+        offset = offset + 1
     end
 
     return offset
