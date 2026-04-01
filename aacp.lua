@@ -103,6 +103,75 @@ local bud_role = {
     [0x02] = "Right is primary"
 }
 
+-------- aacp control enums --------
+local aacp_control_type = {
+    [0x01] = "Mic Mode",
+    [0x02] = "Scan",
+    [0x03] = "Reset",
+    [0x04] = "Basic Double Tap Mode",
+    [0x05] = "Button Send Mode",
+    [0x06] = "Ownership state",
+    [0x07] = "Tap Interval",
+    [0x08] = "Bud Role", -- request connected bud to go secondary
+    [0x09] = "Debug Get Data",
+    [0x0A] = "In Ear Detection",
+    [0x0B] = "Jitter Buffer", -- aka "Dynamic Latency"
+    [0x0C] = "Double Tap Mode",
+    [0x0D] = "Listen Mode",
+    [0x0E] = "Heart Rate Monitor",
+    [0x0F] = "Heart Rate Monitor",
+    [0x10] = "Unknown/Unassigned",
+    [0x11] = "Switch Control",
+    [0x12] = "Voice Trigger",
+    [0x13] = "DoAP mode", -- "Dictation over AirPods" for Siri
+    [0x14] = "Single Click",
+    [0x15] = "Double Click",
+    [0x16] = "Click and Hold",
+    [0x17] = "Double Click Interval",
+    [0x18] = "Click and Hold Interval",
+    [0x19] = "Unknown/Unassigned",
+    [0x1A] = "Listening Mode Configs",
+    [0x1B] = "One Bud ANC Mode",
+    [0x1C] = "Crown Rotation Direction",
+    [0x1D] = "Unknown/Unassigned",
+    [0x1E] = "Auto Answer Mode",
+    [0x1F] = "Chime Volume",
+    [0x20] = "Smart Routing Mode",
+    [0x21] = "Unknown/Unassigned",
+    [0x22] = "HFP Uplink Mode",
+    [0x23] = "Volume Swipe Interval",
+    [0x24] = "Call Management Config",
+    [0x25] = "Volume Swipe Mode",
+    [0x26] = "Adaptive Volume",
+    [0x27] = "Software Mute",
+    [0x28] = "Conversation Detect",
+    [0x29] = "Selective Speech Listening",
+    [0x2A] = "Unknown/Unassigned",
+    [0x2B] = "Unknown/Unassigned",
+    [0x2C] = "Hearing Aid",
+    [0x2D] = "Unknown/Unassigned",
+    [0x2E] = "Auto ANC Strength",
+    [0x2F] = "Hearing Aid Gain Swipe",
+    [0x30] = "Heart Rate Monitor",
+    [0x31] = "In-Case Tone",
+    [0x32] = "Siri Multitone",
+    [0x33] = "Hearing Assist",
+    [0x34] = "Allow Off Option",
+    [0x35] = "Sleep Detection",
+    [0x36] = "Allow Auto Connect from Audio Accessory",
+    [0x37] = "Hearing Protection PPE",
+    [0x38] = "PPE Cap Level Config",
+    [0x39] = "Raw Gestures Config",
+    [0x3A] = "Allow Temporary Managed Pairing",
+    [0x3B] = "Dynamic End of Charge",
+    [0x3C] = "System Siri Mode",
+    [0x3D] = "Hearing Aid Generic", -- "hearingAidV2SourceRegionSupport"
+    [0x3E] = "Uplink EQ Bud",
+    [0x3F] = "Uplink EQ Source",
+    [0x40] = "In Case Tone Volume",
+    [0x41] = "Disable Button Input"
+}
+
 local f = aacp_proto.fields
     f.type = ProtoField.uint16("aacp.type", "Type", base.HEX, aacp_type)
     f.service = ProtoField.uint16("aacp.service", "Service", base.DEC)
@@ -111,6 +180,7 @@ local f = aacp_proto.fields
     f.minor = ProtoField.uint16("aacp.minor", "Minor Version", base.DEC)
     f.features = ProtoField.uint64("aacp.features", "Feature Flags", base.HEX)
     f.message_type = ProtoField.uint16("aacp.message_type", "Type", base.HEX, aacp_message_type)
+    f.control_type = ProtoField.uint8("aacp.control_type", "Type", base.HEX, aacp_control_type)
     f.data = ProtoField.bytes("aacp.data", "Trailing Data", base.NONE)
 
 function aacp_proto.dissector(buffer, pinfo, tree)
@@ -199,7 +269,24 @@ function aacp_message(buffer, pinfo, tree)
         local role = buffer(offset, 1):uint()
         tree:add(aacp_proto, buffer(offset, 1), bud_role[role])
         offset = offset + 1
+    elseif type == 0x09 then -- Control Command
+        local control_tree = tree:add(aacp_proto, buffer(offset), "Control")
+        offset = offset + aacp_control(buffer(offset), pinfo, control_tree)
     end
+
+    return offset
+end
+
+function aacp_control(buffer, pinfo, tree)
+    local offset = 0
+
+    local type = buffer(offset, 1):uint()
+    pinfo.cols.info:append(", "..(aacp_control_type[type] or "Unknown Control"))
+    tree:set_text(aacp_control_type[type] or "Unknown Control")
+    tree:add(f.control_type, buffer(offset, 1))
+    offset = offset + 1
+
+
 
     return offset
 end
