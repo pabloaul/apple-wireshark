@@ -76,6 +76,21 @@ local aacp_message_type = {
     [0x60] = "Personal Translation",
 }
 
+local battery_component = {
+    [0x08] = "Case",
+    [0x04] = "Left",
+    [0x02] = "Right",
+    [0x01] = "Headset"
+}
+
+local battery_status = {
+    [0x05] = "Charging/Disconnected",
+    [0x04] = "Disconnected",
+    [0x02] = "Discharging",
+    [0x01] = "Charging",
+    [0x00] = "Unknown"
+}
+
 local f = aacp_proto.fields
     f.type = ProtoField.uint16("aacp.type", "Type", base.HEX, aacp_type)
     f.service = ProtoField.uint16("aacp.service", "Service", base.DEC)
@@ -147,7 +162,20 @@ function aacp_message(buffer, pinfo, tree)
     tree:add_le(f.message_type, buffer(offset, 2))
     offset = offset + 2
 
+    if type == 0x04 then -- Battery Info
+        local battery_count = buffer(offset, 1):uint()
+        offset = offset + 1
 
+        for i = 0, battery_count - 1, 1 do
+            local component = buffer(offset, 1):uint()
+            local chargevol = buffer(offset + 2, 1):uint()
+            local status = buffer(offset + 3, 1):uint()
+
+            tree:add(aacp_proto, buffer(offset, 5), battery_component[component]..": "..chargevol.."% ("..(battery_status[status] or "Unknown")..")")
+
+            offset = offset + 5
+        end
+    end
 
     return offset
 end
