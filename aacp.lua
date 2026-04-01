@@ -8,6 +8,74 @@ local aacp_type = {
     [0x04] = "Message"
 }
 
+-------- aacp message enums  --------
+local aacp_message_type = {
+    [0x01] = "Capabilities Request",
+    [0x02] = "Capabilities Response",
+    [0x03] = "Battery Info Request",
+    [0x04] = "Battery Info Response",
+    [0x05] = "Ear Detection Request",
+    [0x06] = "Ear Detection Response",
+    [0x07] = "Bud Role Request",
+    [0x08] = "Bud Role Response",
+    [0x09] = "Control Command",
+    [0x0B] = "Device List",
+    [0x0C] = "MAC Address",
+    [0x0D] = "Stream State Info Request",
+    [0x0E] = "Audio Source",
+    [0x0F] = "Set Notification Filter",
+    [0x10] = "Smart Routing",
+    [0x11] = "Smart Routing Response",
+    [0x12] = "Easy Pair Request?",
+    [0x14] = "Connect Priority List",
+    [0x15] = "Triangle Status Request",
+    [0x16] = "Magnet Link",
+    [0x17] = "BuddyCommand",
+    [0x19] = "Stem Press",
+    [0x1A] = "Rename",
+    [0x1B] = "Timestamp",
+    [0x1D] = "Information",
+    [0x1E] = "Send External Accessory Session Packet",
+    [0x1F] = "Notify Session State?",
+    [0x20] = "Send Remote Firmware Auth Data",
+    [0x21] = "Unknown",
+    [0x22] = "Case Info Request",
+    [0x24] = "Send Device Info?",
+    [0x26] = "Certificates Request",
+    [0x27] = "Certificates Response",
+    [0x28] = "Gyro Info",
+    [0x29] = "Set Country Code",
+    [0x2B] = "Stream State Info Response?",
+    [0x2C] = "GAPA Challenge",
+    [0x2D] = "Connected Devices Request",
+    [0x2E] = "Connected Devices Response",
+    [0x30] = "Magic Keys Request",
+    [0x31] = "Magic Keys Response",
+    [0x32] = "Magic Keys Response",
+    [0x40] = "Unknown",
+    [0x44] = "Send Smart Routing 2.0 Info",
+    [0x45] = "Fast Connect Complete?",
+    [0x47] = "Bud Swap 2.0 Procedure?",
+    [0x48] = "Swap Imminent Confirm?",
+    [0x49] = "Bud Swap 2.0 Completion?",
+    [0x4A] = "Swap Complete Confirm?",
+    [0x4B] = "Conversational Awareness",
+    [0x4C] = "Adaptive Volume Message",
+    [0x4D] = "Source Feature Capabilities",
+    [0x4E] = "Feature ProxCard Status Update",
+    [0x4F] = "UARP Data",
+    [0x50] = "Unknown",
+    [0x52] = "Source Context",
+    [0x53] = "PME Config",
+    [0x54] = "Set Band Edges",
+    [0x55] = "Unknown",
+    [0x56] = "USB Spatial Sensor Data Request",
+    [0x57] = "Sleep Detection Update",
+    [0x58] = "Unknown",
+    [0x59] = "Dynamic End Of Charge",
+    [0x60] = "Personal Translation",
+}
+
 local f = aacp_proto.fields
     f.type = ProtoField.uint16("aacp.type", "Type", base.HEX, aacp_type)
     f.service = ProtoField.uint16("aacp.service", "Service", base.DEC)
@@ -15,6 +83,7 @@ local f = aacp_proto.fields
     f.major = ProtoField.uint16("aacp.major", "Major Version", base.DEC)
     f.minor = ProtoField.uint16("aacp.minor", "Minor Version", base.DEC)
     f.features = ProtoField.uint64("aacp.features", "Feature Flags", base.HEX)
+    f.message_type = ProtoField.uint16("aacp.message_type", "Type", base.HEX, aacp_message_type)
     f.data = ProtoField.bytes("aacp.data", "Trailing Data", base.NONE)
 
 function aacp_proto.dissector(buffer, pinfo, tree)
@@ -59,11 +128,26 @@ function aacp_proto.dissector(buffer, pinfo, tree)
     elseif type == 0x03 then -- Disconnect Response
     elseif type == 0x04 then -- Message
         local message_tree = subtree:add(aacp_proto, buffer(offset), "Message")
+        offset = offset + aacp_message(buffer(offset), pinfo, message_tree)
     end
 
     if buffer(offset):len() ~= 0 then -- trailing data
         subtree:add(f.data, buffer(offset))
     end
+
+    return offset
+end
+
+function aacp_message(buffer, pinfo, tree)
+    local offset = 0
+
+    local type = buffer(offset, 2):le_uint()
+    pinfo.cols.info:append(aacp_message_type[type] or "Unknown Message")
+    tree:set_text(aacp_message_type[type] or "Unknown Message")
+    tree:add_le(f.message_type, buffer(offset, 2))
+    offset = offset + 2
+
+
 
     return offset
 end
