@@ -40,6 +40,7 @@ local aacp_message_type = {
     [0x20] = "Send Remote Firmware Auth Data",
     [0x21] = "Unknown",
     [0x22] = "Case Info Request",
+    [0x23] = "Case Info",
     [0x24] = "Send Device Info?",
     [0x26] = "Certificates Request",
     [0x27] = "Certificates",
@@ -101,6 +102,11 @@ local ear_detection = {
 local bud_role = {
     [0x01] = "Left is primary",
     [0x02] = "Right is primary"
+}
+
+local tipi_variant = {
+    [0x01] = "Temporary Address",
+    [0x02] = "Permanent Address"
 }
 
 -------- aacp control enums --------
@@ -172,6 +178,19 @@ local aacp_control_type = {
     [0x41] = "Disable Button Input"
 }
 
+local listen_mode = {
+    [0x01] = "Off",
+    [0x02] = "ANC",
+    [0x03] = "Transparency",
+    [0x04] = "Adaptive"
+}
+
+local feature_control = {
+    [0x00] = "Query",
+    [0x01] = "Enable",
+    [0x02] = "Disable"
+}
+
 local f = aacp_proto.fields
     f.type = ProtoField.uint16("aacp.type", "Type", base.HEX, aacp_type)
     f.service = ProtoField.uint16("aacp.service", "Service", base.DEC)
@@ -181,6 +200,8 @@ local f = aacp_proto.fields
     f.features = ProtoField.uint64("aacp.features", "Feature Flags", base.HEX)
     f.message_type = ProtoField.uint16("aacp.message_type", "Type", base.HEX, aacp_message_type)
     f.control_type = ProtoField.uint8("aacp.control_type", "Type", base.HEX, aacp_control_type)
+    f.ether = ProtoField.ether("aacp.mac", "MAC Address")
+    f.unknown = ProtoField.bytes("aacp.unknown", "Unknown", base.NONE)
     f.data = ProtoField.bytes("aacp.data", "Trailing Data", base.NONE)
 
 function aacp_proto.dissector(buffer, pinfo, tree)
@@ -244,7 +265,10 @@ function aacp_message(buffer, pinfo, tree)
     tree:add_le(f.message_type, buffer(offset, 2))
     offset = offset + 2
 
-    if type == 0x04 then -- Battery Info
+    if type == 0x01 then -- Capabilities Request
+        tree:add(f.unknown, buffer(offset, 1))
+        offset = offset + 1
+    elseif type == 0x04 then -- Battery Info
         local battery_count = buffer(offset, 1):uint()
         offset = offset + 1
 
@@ -269,9 +293,83 @@ function aacp_message(buffer, pinfo, tree)
         local role = buffer(offset, 1):uint()
         tree:add(aacp_proto, buffer(offset, 1), bud_role[role])
         offset = offset + 1
+
+        tree:add(f.unknown, buffer(offset, 3))
+        offset = offset + 3
     elseif type == 0x09 then -- Control Command
         local control_tree = tree:add(aacp_proto, buffer(offset), "Control")
         offset = offset + aacp_control(buffer(offset), pinfo, control_tree)
+    elseif type == 0x0C then -- MAC Address
+        tree:add(f.ether, buffer(offset, 6))
+        offset = offset + 6
+        tree:add(f.unknown, buffer(offset, 1))
+        offset = offset + 1
+        local addr_type = buffer(offset, 1):uint()
+        tree:add(aacp_proto, buffer(offset, 1), (tipi_variant[addr_type] or "Unknown"))
+        offset = offset + 1
+    elseif type == 0x0E then -- Audio Source
+        tree:add(f.ether, buffer(offset, 6))
+        offset = offset + 6
+        tree:add(f.unknown, buffer(offset, 1))
+        offset = offset + 1
+    elseif type == 0x0F then -- Set Notification Filter
+        tree:add(f.unknown, buffer(offset, 4))
+        offset = offset + 4
+    elseif type == 0x10 then -- Smart Routing
+        tree:add(f.unknown, buffer(offset, 6))
+        offset = offset + 6
+
+        local len = buffer(offset, 2):le_uint()
+        tree:add_le(aacp_proto, buffer(offset, 2), "Length: " .. len)
+        offset = offset + 2
+
+        tree:add(f.unknown, buffer(offset, len))
+        offset = offset + len
+    elseif type == 0x17 then -- Buddy Command
+        tree:add(f.unknown, buffer(offset, 4))
+        offset = offset + 4
+
+        local buddylen = buffer(offset, 2):le_uint()
+        tree:add_le(aacp_proto, buffer(offset, 2), "Length: " .. buddylen)
+        offset = offset + 2
+
+        tree:add(aacp_proto, buffer(offset, buddylen), "Data")
+        offset = offset + buddylen
+    elseif type == 0x2E then -- Connected Devices
+        tree:add(f.unknown, buffer(offset, 2))
+        offset = offset + 2
+
+        local mac_count = buffer(offset, 1):uint()
+        tree:add(aacp_proto, buffer(offset, 1), "TiPi List Count: " .. mac_count)
+        offset = offset + 1
+
+        for i = 0, mac_count - 1, 1 do
+            tree:add(f.ether, buffer(offset, 6))
+            offset  = offset + 6
+
+            tree:add(f.unknown, buffer(offset, 2))
+            offset = offset + 2
+        end
+    elseif type == 0x30 then -- Magic Keys Request
+        tree:add(f.unknown, buffer(offset, 2))
+        offset = offset + 2
+    elseif type == 0x4B then -- Conversational Awareness
+        tree:add(f.unknown, buffer(offset, 4))
+        offset = offset + 4
+    elseif type == 0x4C then -- Adaptive Volume Message
+        local len = buffer(offset, 2):le_uint()
+        tree:add_le(aacp_proto, buffer(offset, 2), "Length: " .. len)
+        offset = offset + 2
+
+        tree:add(f.unknown, buffer(offset, len))
+        offset = offset + len
+    elseif type == 0x4E then -- Feature Proximity Card Status
+        tree:add(f.unknown, buffer(offset, 8))
+        offset = offset + 8
+    elseif type == 0x53 then -- PME Config
+        local len = buffer(offset, 2):le_uint()
+        tree:add_le(aacp_proto, buffer(offset, 2), "Length: " .. len)
+        offset = offset + 2
     end
 
     return offset
@@ -286,7 +384,11 @@ function aacp_control(buffer, pinfo, tree)
     tree:add(f.control_type, buffer(offset, 1))
     offset = offset + 1
 
-
+    if type == 0x0D then -- Listen Mode
+        local mode = buffer(offset, 1):uint()
+        tree:add(aacp_proto, buffer(offset, 1), listen_mode[mode])
+        offset = offset + 1
+    end
 
     return offset
 end
