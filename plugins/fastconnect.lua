@@ -5,6 +5,9 @@ l2cap_cmd = Field.new("btl2cap.cmd_code")
 l2cap_data = Field.new("btl2cap.data")
 
 function fastconnect_l2c_echo_proto.dissector(buffer, pinfo, tree)
+    -- ensure fields exist
+    if l2cap_cid() == nil or l2cap_cmd() == nil or l2cap_data() == nil then return end
+
     -- match l2cap signaling channel
     if l2cap_cid()() ~= 0x0001 then return end
 
