@@ -19,5 +19,10 @@ Protocols utilizing FastConnect will strip the PSM from SDP, rendering Wireshark
   ``%APPDATA%/Wireshark/plugins/`` (Windows)\
   and reload with Ctrl + Shift + L
 
+## Usage
+Should just work™ after installing.
+
+Make sure that the initial connection is part of the capture
+
 ## Previous work
 - [More dissectors with focus on the Apple Watch](https://github.com/seemoo-lab/watchwitch-wireshark)
