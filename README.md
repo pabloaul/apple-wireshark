@@ -1,10 +1,17 @@
-# AACP Wireshark dissector
+# Apple Wireshark dissectors
+This repo contains Wireshark dissectors for various proprietary bluetooth protocols used by Apple.
 
-This repo contains a Wireshark dissector for the Advanced Accessory Control Profile by Apple.
-The protocol is used on various audio accessories (e.g. AirPods) and is responsible for handling configuration (anc, buttons, hearing aid), device/health metrics (battery, heartrate, motion), connectivity via magic keys, possibly updates by encapsulating UARP data and checking device authenticity via certificates.
+They serve as a (very crude) reference for me to help in understanding and come with absolutely no guarantee in version compatibility, correctness or reliability.
 
-It can also serve as a (crude) reference for the protocol given that I have not found a more extensive one elsewhere yet.
-Most of the information was aquired from static analysis of the bluetoothd binary and a bit of poking around at my own device.
+Bluetooth captures for related protocols would be much appreciated!
+
+## Protocols
+### Advanced Accessory Control Profile (AACP)
+The protocol is used on various audio accessories (e.g. AirPods) and is responsible for handling configuration (anc, buttons, hearing aid), device/health metrics (battery, heartrate, motion, crashlogs), managing magic keys, possibly updates by encapsulating UARP data and checking device authenticity via certificates.
+
+### FastConnect
+Negotiates L2CAP channels and is also capable of sending some initial protocol commands directly during the connection phase.
+Protocols utilizing FastConnect will strip the PSM from SDP, rendering Wireshark unable to assign the dissector to the L2CAP channels by itself.
 
 ## Installation
 - Move the lua plugin into:\
@@ -12,7 +19,5 @@ Most of the information was aquired from static analysis of the bluetoothd binar
   ``%APPDATA%/Wireshark/plugins/`` (Windows)\
   and reload with Ctrl + Shift + L
 
-## Usage
-The AACP service gets advertised with the L2CAP PSM 0x1001 (4097) and the dissector should automatically attach itself to the related L2CAP channels.
-
-However when the Fast Connect protocol gets used, the channel exchange will happen over the payload in L2CAP echos and the PSM gets stripped which will require you to add the dissector manually to the established channels using ``Decode As...`` until Fast Connect functionality gets implemented.
+## Previous work
+- [More dissectors with focus on the Apple Watch](https://github.com/seemoo-lab/watchwitch-wireshark)
