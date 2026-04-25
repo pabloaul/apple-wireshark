@@ -60,14 +60,14 @@ local aacp_message_type = {
     [0x48] = "Swap Imminent Confirm?",
     [0x49] = "Bud Swap 2.0 Completion?",
     [0x4A] = "Swap Complete Confirm?",
-    [0x4B] = "Conversational Awareness",
+    [0x4B] = "Conversational Awareness", -- aka "Conversation Detect"
     [0x4C] = "Adaptive Volume Message",
     [0x4D] = "Source Feature Capabilities",
     [0x4E] = "Feature ProxCard Status Update",
     [0x4F] = "UARP Data",
-    [0x50] = "Unknown",
+    [0x50] = "Unknown", -- PerfStats, begins with subtype?
     [0x52] = "Source Context",
-    [0x53] = "PME Config",
+    [0x53] = "Personal Medical Equipment Config",
     [0x54] = "Set Band Edges",
     [0x55] = "Unknown",
     [0x56] = "USB Spatial Sensor Data Request",
@@ -75,6 +75,7 @@ local aacp_message_type = {
     [0x58] = "Unknown",
     [0x59] = "Dynamic End Of Charge",
     [0x60] = "Personal Translation",
+    [0x62] = "Unknown"
 }
 
 local battery_component = {
@@ -85,7 +86,7 @@ local battery_component = {
 }
 
 local battery_status = {
-    [0x05] = "Charging/Disconnected",
+    [0x05] = "Optimized Charging",
     [0x04] = "Disconnected",
     [0x02] = "Discharging",
     [0x01] = "Charging",
@@ -104,9 +105,20 @@ local bud_role = {
     [0x02] = "Right is primary"
 }
 
+local crown_rotation = {
+    [0x01] = "Front-to-Back",
+    [0x02] = "Back-to-Front"
+}
+
 local tipi_variant = {
     [0x01] = "Temporary Address",
     [0x02] = "Permanent Address"
+}
+
+local tipi_connection_status = {
+    [1] = "Connected",
+    [2] = "Disconnected",
+    [3] = "Not Nearby"
 }
 
 local information_string = {
@@ -125,6 +137,22 @@ local information_string = {
     [12] = "UUID (Right Bud)",
     [13] = "First Time Pairing (Left Bud)",
     [14] = "First Time Pairing (Right Bud)"
+}
+
+local mp_key_type = {
+    [0x0001] = "IRK",
+    [0x0002] = "?",
+    [0x0004] = "ENC_KEY", -- enc_key according to librepods
+    [0x0008] = "?",
+    [0x0010] = "magicAccIRK",
+    [0x0020] = "magicAccEncKey",
+    [0x0040] = "magicAccKey",
+    [0x0080] = "magicAccHint",
+    [0x0100] = "magicAccRatchet", -- high confidence
+    [0x0200] = "GuestAccIRK",
+    [0x0400] = "GuestAccEncKey",
+    [0x1000] = "MasterCloudIRK", -- medium confidence
+    [0x2000] = "MasterCloudAddress", -- high confidence
 }
 
 -------- aacp control enums --------
@@ -204,6 +232,23 @@ local listen_mode = {
     [0x04] = "Adaptive"
 }
 
+local listening_mode_configs = {
+    [0x00] = "ANC",
+    [0x01] = "Normal/ANC",
+    [0x02] = "Transparency",
+    [0x03] = "Normal/Transparency",
+    [0x04] = "ANC/Transparency",
+    [0x05] = "Normal/ANC/Transparency",
+    [0x06] = "Auto",
+    [0x07] = "Normal/Auto",
+    [0x08] = "ANC/Auto",
+    [0x09] = "Normal/ANC/Auto",
+    [0x0A] = "Transparency/Auto",
+    [0x0B] = "Normal/Transparency/Auto",
+    [0x0C] = "ANC/Transparency/Auto",
+    [0x0D] = "Normal/ANC/Transparency/Auto"
+}
+
 local feature_control = {
     [0x00] = "Query",
     [0x01] = "Enable",
@@ -222,6 +267,13 @@ local f = aacp_proto.fields
     f.ether = ProtoField.ether("aacp.mac", "MAC Address")
     f.unknown = ProtoField.bytes("aacp.unknown", "Unknown", base.NONE)
     f.data = ProtoField.bytes("aacp.data", "Trailing Data", base.NONE)
+    f.opack_data = ProtoField.protocol("aacp.opack_data", "OPACK Data")
+    f.uarp_data = ProtoField.protocol("aacp.uarp_data", "UARP Data")
+-- magicpairing:
+    f.keytype = ProtoField.uint16("aacp.mp_keytype", "Key Type", base.HEX, mp_key_type)
+    f.keylen = ProtoField.uint16("aacp.mp_keylen", "Key Length", base.DEC)
+    f.keycount = ProtoField.uint8("aacp.mp_keycount", "Key Count", base.DEC)
+    f.key = ProtoField.bytes("aacp.mp_key", "Key", base.NONE)
 
 function aacp_proto.dissector(buffer, pinfo, tree)
     if buffer():len() < 4 then return end -- skip if header is missing
@@ -338,15 +390,18 @@ function aacp_message(buffer, pinfo, tree)
         tree:add(f.unknown, buffer(offset, 4))
         offset = offset + 4
     elseif type == 0x10 or type == 0x11 then -- Smart Routing
-        tree:add(f.unknown, buffer(offset, 6))
+        tree:add_le(f.ether, buffer(offset, 6))
         offset = offset + 6
 
         local len = buffer(offset, 2):le_uint()
         --tree:add_le(aacp_proto, buffer(offset, 2), "Length:", len)
         offset = offset + 2
 
-        tree:add(f.unknown, buffer(offset, len))
-        offset = offset + len
+        tree:add(f.unknown, buffer(offset, 1))
+        offset = offset + 1
+
+        tree:add(f.opack_data, buffer(offset, len-1))
+        offset = offset + len-1
     elseif type == 0x14 then -- Connect Priority List
         local count = buffer(offset, 1):uint()
         offset = offset + 1
@@ -412,12 +467,13 @@ function aacp_message(buffer, pinfo, tree)
         offset = offset + len
     elseif type == 0x23 then -- Case Info
         -- not sure about alignment yet but it contains the following values:
-        -- CaseInfoMessageVersion
-        -- CaseInfoVID
-        -- CaseInfoPID
-        -- CaseInfoVIDSource
-        -- CaseInfoColor
-        -- CaseInfoVersion
+        -- messageVersion
+        -- vendorID
+        -- productID
+        -- vendorIDSource
+        -- caseColor
+        -- caseVersion
+        -- reserved
         -- CaseInfoName
         tree:add_le(f.unknown, buffer(offset, 1))
         offset = offset + 1
@@ -431,11 +487,14 @@ function aacp_message(buffer, pinfo, tree)
         tree:add_le(f.unknown, buffer(offset, 2))
         offset = offset + 2
 
-        tree:add_le(f.unknown, buffer(offset, 1))
-        offset = offset + 1
+        tree:add_le(f.unknown, buffer(offset, 4))
+        offset = offset + 4
 
         tree:add_le(f.unknown, buffer(offset, 8))
         offset = offset + 8
+
+        tree:add_le(f.unknown, buffer(offset, 4))
+        offset = offset + 4
 
         tree:add_le(f.unknown, buffer(offset))
         offset = offset + buffer(offset):len()
@@ -486,8 +545,11 @@ function aacp_message(buffer, pinfo, tree)
         tree:add(f.unknown, buffer(offset, len))
         offset = offset + len
     elseif type == 0x2E then -- Connected Devices
-        tree:add(f.unknown, buffer(offset, 2))
-        offset = offset + 2
+        tree:add(f.unknown, buffer(offset, 1)) -- audioStatus?
+        offset = offset + 1
+
+        tree:add(f.unknown, buffer(offset, 1)) -- sourceCount?
+        offset = offset + 1
 
         local mac_count = buffer(offset, 1):uint()
         tree:add(aacp_proto, buffer(offset, 1), "TiPi List Count: ", mac_count)
@@ -497,15 +559,18 @@ function aacp_message(buffer, pinfo, tree)
             tree:add_le(f.ether, buffer(offset, 6)) -- TODO: add_le does not actually swap byteorder for f.ether
             offset  = offset + 6
 
-            tree:add(f.unknown, buffer(offset, 2))
-            offset = offset + 2
+            local state = buffer(offset, 1):uint()
+            tree:add(aacp_proto, buffer(offset, 1), "connectionStatus:", tipi_connection_status[state])
+            offset = offset + 1
+
+            tree:add(aacp_proto, buffer(offset, 1), "stateFlags")
+            offset = offset + 1
         end
     elseif type == 0x30 then -- Magic Keys Request
         tree:add(f.unknown, buffer(offset, 2))
         offset = offset + 2
     elseif type == 0x31 then -- Magic Keys
-        tree:add(f.unknown, buffer(offset))
-        offset = offset + buffer(offset):len()
+        offset = offset + magicpairing_key_message(buffer(offset), pinfo, tree)
     elseif type == 0x40 then -- Unknown
         tree:add_le(f.unknown, buffer(offset, 2))
         offset = offset + 2
@@ -543,7 +608,7 @@ function aacp_message(buffer, pinfo, tree)
         local len = buffer(offset, 2):le_uint()
         offset = offset + 2
 
-        tree:add(f.unknown, buffer(offset, len))
+        tree:add(f.uarp_data, buffer(offset, len))
         offset = offset + len
     elseif type == 0x53 then -- PME Config
         local len = buffer(offset, 2):le_uint()
@@ -565,9 +630,31 @@ function aacp_message(buffer, pinfo, tree)
                 "Band " .. bandIndex .. ": Low " .. bandLow .. " / High " .. bandHigh)
             offset = offset + 3
         end
-    elseif type == 0x55 then -- Unknown
+    elseif type == 0x55 then -- Unknown -- almost always after Audio Source. some form of audio state bools?
         tree:add(f.unknown, buffer(offset, 4))
         offset = offset + 4
+    end
+
+    return offset
+end
+
+function magicpairing_key_message(buffer, pinfo, tree)
+    local offset = 0
+
+    local key_count = buffer(offset, 1):uint()
+    tree:add(f.keycount, buffer(offset, 1))
+    offset = offset + 1
+
+    for i = 0, key_count-1, 1 do
+        local key = tree:add_le(f.keytype, buffer(offset, 2))
+        offset = offset + 2
+
+        local keylen = buffer(offset, 2):le_uint()
+        key:add_le(f.keylen, buffer(offset, 2))
+        offset = offset + 2
+
+        key:add(f.key, buffer(offset, keylen))
+        offset = offset + keylen
     end
 
     return offset
