@@ -60,23 +60,55 @@ local fc_general_type = {
     [0x04] = "Unknown"
 }
 
-local fc_descriptor_type = {
-    [0x01] = "L2CAP Configuration",
-    [0x03] = "Unknown",
-    [0x04] = "L2CAP Configuration Response",
-    [0x10] = "Unknown",
-    [0x11] = "Unknown",
-    [0x12] = "Unknown",
-    [0x13] = "Service Initial Commands",
-    [0x14] = "Unknown",
-    [0x15] = "Unknown",
-    [0x16] = "Unknown",
-    [0x17] = "Unknown",
-    [0x18] = "Unknown",
-    [0x19] = "Unknown",
-    [0x1A] = "Unknown",
-    [0x1B] = "Unknown",
-    [0x1C] = "Unknown"
+local fc_common = {
+    [0x01] = "L2CAP Config",
+    [0x03] = "Version",
+    [0x04] = "Status",
+}
+
+local fc_a2dp = {
+    [0x10] = "AVDTP Version", -- msg 3,4
+    [0x11] = "A2DP Endpoint?", -- msg 3,4
+    [0x12] = "Delay Stream Request", -- msg 4
+    [0x13] = "L2CAP Media", -- msg 3,4
+    [0x14] = "?", -- msg 5
+    [0x15] = "?", -- msg 5
+}
+
+local fc_hfp = {
+    [0x10] = "?", -- msg 3,4
+    [0x11] = "?", -- msg 3
+    [0x12] = "?", -- msg 3
+    [0x13] = "?", -- msg 3
+    [0x14] = "?", -- msg 4
+    [0x15] = "?", -- msg 3
+    [0x16] = "?", -- msg 4
+    [0x17] = "?", -- msg 4
+    [0x18] = "?", -- msg 4
+    [0x19] = "DLCI Link", -- msg 4
+    [0x1A] = "FC XAPL Feature Supported?", -- msg 3
+    [0x1B] = "?", -- msg 3
+}
+
+local fc_avrcp = {
+    [0x10] = "?", -- msg 3,4
+    [0x11] = "L2CAP Browse Channel?" -- not seen
+}
+
+local fc_gatt = {
+    [0x10] = "?" -- msg 4
+}
+
+local fc_aacp = {
+    [0x10] = "?", -- msg 3,4
+    [0x12] = "?", -- msg 4
+    [0x13] = "Control Commands",
+    [0x14] = "Airpods Info",
+    [0x16] = "Bud In Ear State",
+    [0x17] = "Role State",
+    [0x18] = "Battery State",
+    [0x19] = "?", -- msg 3
+    [0x1A] = "?", -- msg 3
 }
 
 local psm_mapping = {
@@ -104,7 +136,7 @@ local f = fastconnect_proto.fields
     f.mtu = ProtoField.uint16("fastconnect.mtu", "MTU", base.DEC)
     f.type = ProtoField.uint16("fastconnect.type", "Type", base.DEC, fc_type)
     f.general_type = ProtoField.uint8("fastconnect.general_type", "Type", base.HEX, fc_general_type)
-    f.descriptor_type = ProtoField.uint8("fastconnect.descriptor_type", "Type", base.HEX, fc_descriptor_type)
+    f.descriptor_type = ProtoField.uint8("fastconnect.descriptor_type", "Type", base.HEX)
     f.descriptor = ProtoField.uint32("fastconnect.descriptor", "Descriptor", base.HEX, descriptor_mapping)
     f.unknown = ProtoField.bytes("fastconnect.data", "Unknown")
 
