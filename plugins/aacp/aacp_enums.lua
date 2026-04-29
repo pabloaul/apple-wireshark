@@ -92,7 +92,7 @@ e.type = {
             [0x05] = "Optimized Charging",
         }
     -- 0x06 Ear Detection
-        e.ear_detection = {
+        e.bud_location = {
             [0x00] = "In Ear",
             [0x01] = "Out of Ear",
             [0x02] = "In Case",
@@ -272,5 +272,30 @@ e.type = {
             [0x02] = "Back-to-Front",
         }
 
+-- unsorted
+e.button_mode = {
+    [0x00] = "Unknown",
+    [0x01] = "Siri",
+    [0x02] = "Play/Pause",
+    [0x03] = "Next",
+    [0x04] = "Previous",
+    [0x05] = "ANC",
+    [0x06] = "Volume Up",
+    [0x07] = "Volume Down",
+    [0x7F] = "Off"
+}
+
+e.bud_dock_state = {
+    [0x01] = "Unknown",
+    [0x02] = "Undocked",
+    [0x03] = "Docked",
+    [0x04] = "Docked Dead",
+}
+
+e.bud_lid_state = {
+    [0x01] = "Unknown",
+    [0x02] = "Closed",
+    [0x03] = "Open",
+}
 
 return e -- return the module table

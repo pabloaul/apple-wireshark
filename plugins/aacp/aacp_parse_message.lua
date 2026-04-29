@@ -20,20 +20,22 @@ function parse.msg(buffer, pinfo, tree, f)
         offset = offset + 1
 
         for i = 0, battery_count - 1, 1 do
-            local component = buffer(offset, 1):uint()
-            local chargevol = buffer(offset + 2, 1):uint()
-            local status = buffer(offset + 3, 1):uint()
+            local id = buffer(offset, 1):uint()
+            local type = buffer(offset + 1, 1):uint()
+            local level = buffer(offset + 2, 1):uint()
+            local state = buffer(offset + 3, 1):uint()
+            local status = buffer(offset + 4, 1):uint()
 
-            tree:add(aacp_proto, buffer(offset, 5), enums.battery_component[component]..": "..chargevol.."% ("..(enums.battery_status[status] or "Unknown")..")")
+            tree:add(aacp_proto, buffer(offset, 5), enums.battery_component[id]..": "..level.."% ("..(enums.battery_status[state] or "Unknown")..")")
 
             offset = offset + 5
         end
     elseif type == 0x06 then -- Ear Detection
-        local primary = enums.ear_detection[buffer(offset, 1):uint()]
+        local primary = enums.bud_location[buffer(offset, 1):uint()]
         tree:add(aacp_proto, buffer(offset, 1), "Primary:", primary)
         offset = offset + 1
 
-        local secondary = enums.ear_detection[buffer(offset, 1):uint()]
+        local secondary = enums.bud_location[buffer(offset, 1):uint()]
         tree:add(aacp_proto, buffer(offset, 1), "Secondary:", secondary)
         offset = offset + 1
     elseif type == 0x08 then -- Bud Role
