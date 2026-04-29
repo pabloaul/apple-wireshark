@@ -13,6 +13,9 @@ The protocol is used on various audio accessories (e.g. AirPods) and is responsi
 Negotiates L2CAP channels and is also capable of sending some initial protocol commands directly during the connection phase.
 Protocols utilizing FastConnect will strip the PSM from SDP, rendering Wireshark unable to assign the dissector to the L2CAP channels by itself.
 
+### MagicPairing
+Exchanges shared secrets which may get synced to iCloud so that other devices can also seamlessly connect to the paired accessory. AACP makes use of the key message structure from this. However it has different semantics for the key type.
+
 ## Installation
 - Move the lua plugin into:\
   ``~/.local/lib/wireshark/plugins/`` (Linux/MacOS)\
@@ -22,7 +25,9 @@ Protocols utilizing FastConnect will strip the PSM from SDP, rendering Wireshark
 ## Usage
 Should just work™ after installing.
 
-Make sure that the initial connection is part of the capture
+Make sure that the initial connection is part of the capture.
+
+If not, manually assign the dissector to the L2CAP channel: `Right click -> Decode As...`
 
 ## Previous work
 - [More dissectors with focus on the Apple Watch](https://github.com/seemoo-lab/watchwitch-wireshark)
