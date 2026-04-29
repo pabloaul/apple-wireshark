@@ -310,6 +310,54 @@ function parse.msg(buffer, pinfo, tree, f)
     elseif type == 0x55 then -- Unknown -- almost always after Audio Source. some form of audio state bools?
         tree:add(f.unknown, buffer(offset, 4))
         offset = offset + 4
+    elseif type == 0x58 then -- DoAP Microphone Stream?
+        local subtype = buffer(offset, 2):le_uint()
+        local subtree = tree:add_le(f.unknown, buffer(offset, 2), subtype, "subtype:", subtype) -- Type
+        offset = offset + 2
+
+        local sublength = buffer(offset, 2):le_uint()
+        --tree:add_le(f.unknown, buffer(offset, 2), sublength, "length:", sublength) -- Length
+        offset = offset + 2
+
+        if subtype == 0x0001 then
+            tree:add_le(f.unknown, buffer(offset, 2)) -- static unknown
+            offset = offset + 2
+
+            local subtype2 = buffer(offset, 2):le_uint()
+            tree:add_le(f.unknown, buffer(offset, 2), subtype2, "subtype2:", subtype2) -- Type
+            offset = offset + 2
+
+            local length2 = buffer(offset, 2):le_uint()
+            --tree:add_le(f.unknown, buffer(offset, 2), length2, "length2:", length2) -- Length
+            offset = offset + 2
+
+            if subtype2 == 0x0001 then
+                local weird = buffer(offset, 2):le_uint()
+                tree:add_le(f.unknown, buffer(offset, 2), weird, "initial time?:", weird)
+                offset = offset + 2
+
+                local time1 = buffer(offset, 2):le_uint()
+                tree:add_le(f.unknown, buffer(offset, 2), time1, "time (ms):", time1) -- YUP
+                offset = offset + 2
+
+                local weird2 = buffer(offset, 2):le_uint()
+                tree:add_le(f.unknown, buffer(offset, 2), weird2, "initial samplecount?:", weird2)
+                offset = offset + 2
+
+                local samplecount = buffer(offset, 4):le_uint()
+                tree:add_le(f.unknown, buffer(offset, 4), samplecount, "samplecount:", samplecount)
+                offset = offset + 4
+
+                local weird3 = buffer(offset, 2):le_uint()
+                tree:add_le(f.unknown, buffer(offset, 2), weird3, "weird3:", weird3)
+                offset = offset + 2
+
+                offset = offset + Dissector.get("opus"):call(buffer(offset):tvb(), pinfo, tree)
+            end
+
+        end
+
+
     end
 
     return offset
