@@ -142,19 +142,19 @@ e.type = {
     -- 0x31 Magic Keys
         -- TODO: needs more investigation! the descriptors all barely match between aacp magic keys cmd vs magicpairing protocol vs whats in bluetoothd
         e.mp_key_type = {
-            [0x0001] = "IRK",
+            [0x0001] = "magicAccIRK",
             [0x0002] = "?",
-            [0x0004] = "ENC_KEY", -- enc_key according to librepods
-            [0x0008] = "?",
-            [0x0010] = "magicAccIRK",
-            [0x0020] = "magicAccEncKey",
-            [0x0040] = "magicAccKey",
-            [0x0080] = "magicAccHint",
-            [0x0100] = "magicAccRatchet", -- high confidence
-            [0x0200] = "GuestAccIRK",
-            [0x0400] = "GuestAccEncKey",
-            [0x1000] = "MasterCloudIRK", -- medium confidence
-            [0x2000] = "MasterCloudAddress", -- high confidence
+            [0x0004] = "magicAccEncKey",
+            [0x0008] = "magicAccKey",
+            [0x0010] = "magicAccHint",
+            [0x0020] = "Nonce",
+            [0x0040] = "?",
+            [0x0080] = "AES SIV",
+            [0x0100] = "magicAccRatchet",
+            [0x0200] = "guestAccIRK",
+            [0x0400] = "guestAccEncKey",
+            [0x1000] = "MasterCloudIRK",
+            [0x2000] = "MasterCloudAddress",
         }
     -- 0x54 Band Edges
         e.band_code = {

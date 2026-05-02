@@ -1,6 +1,6 @@
 magicpairing_proto = Proto("magicpairing", "Apple MagicPairing")
 -- This dissector is pretty much 1:1 -> Dennis Heinze, Jiska Classen, and Felix Rohrbach. 2020. MagicPairing: Apple’s Take on Securing Bluetooth Peripherals.
--- written for magicpairing version 1
+-- tested with magicpairing version 1
 
 local mp_type = {
     [0x01] = "Hint",
@@ -24,11 +24,19 @@ local mp_status = {
 }
 
 local mp_key_type = {
-    [0x0010] = "Hint",
+    [0x0001] = "magicAccIRK",
+    [0x0002] = "?",
+    [0x0004] = "magicAccEncKey",
+    [0x0008] = "magicAccKey",
+    [0x0010] = "magicAccHint",
     [0x0020] = "Nonce",
-    [0x0040] = "Unknown",
+    [0x0040] = "?",
     [0x0080] = "AES SIV",
-    [0x0100] = "Ratchet"
+    [0x0100] = "magicAccRatchet",
+    [0x0200] = "guestAccIRK?",
+    [0x0400] = "guestAccEncKey?",
+    [0x1000] = "MasterCloudIRK",
+    [0x2000] = "MasterCloudAddress",
 }
 
 local f = magicpairing_proto.fields
