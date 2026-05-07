@@ -1,9 +1,10 @@
-enums = require("aacp_enums")
-parse_control = require("aacp_parse_control")
+local enums = require("aacp_enums")
+local parse_control = require("aacp_parse_control")
+local f = require("aacp_fields")
 
 local parse =  {} -- init module table
 
-function parse.msg(buffer, pinfo, tree, f)
+function parse.msg(buffer, pinfo, tree)
     local offset = 0
 
     local type = buffer(offset, 2):le_uint()
@@ -13,6 +14,11 @@ function parse.msg(buffer, pinfo, tree, f)
     offset = offset + 2
 
     if type == 0x01 then -- Capabilities Request
+        tree:add(f.unknown, buffer(offset, 1))
+        offset = offset + 1
+    elseif type == 0x02 then -- Capabilities
+        offset = offset + capabilities(buffer(offset), pinfo, tree)
+    elseif type == 0x03 then -- Battery Info Request
         tree:add(f.unknown, buffer(offset, 1))
         offset = offset + 1
     elseif type == 0x04 then -- Battery Info
@@ -31,23 +37,19 @@ function parse.msg(buffer, pinfo, tree, f)
             offset = offset + 5
         end
     elseif type == 0x06 then -- Ear Detection
-        local primary = enums.bud_location[buffer(offset, 1):uint()]
-        tree:add(aacp_proto, buffer(offset, 1), "Primary:", primary)
+        tree:add(f.bud_location, buffer(offset, 1)):prepend_text("Primary ")
         offset = offset + 1
 
-        local secondary = enums.bud_location[buffer(offset, 1):uint()]
-        tree:add(aacp_proto, buffer(offset, 1), "Secondary:", secondary)
+        tree:add(f.bud_location, buffer(offset, 1)):prepend_text("Secondary ")
         offset = offset + 1
     elseif type == 0x08 then -- Bud Role
-        local role = buffer(offset, 1):uint()
-        tree:add(aacp_proto, buffer(offset, 1), enums.bud_role[role])
+        tree:add(f.bud_role, buffer(offset, 1))
         offset = offset + 1
 
         tree:add(f.unknown, buffer(offset, 3))
         offset = offset + 3
     elseif type == 0x09 then -- Control Command
-        local control_tree = tree:add(aacp_proto, buffer(offset), "Control")
-        offset = offset + parse_control.msg(buffer(offset), pinfo, control_tree, f)
+        offset = offset + parse_control.msg(buffer(offset), pinfo, tree)
     elseif type == 0x0C then -- MAC Address
         tree:add_le(f.ether, buffer(offset, 6)) -- TODO: add_le does not actually swap byteorder for f.ether
         offset = offset + 6
@@ -55,13 +57,13 @@ function parse.msg(buffer, pinfo, tree, f)
         tree:add(f.unknown, buffer(offset, 1))
         offset = offset + 1
 
-        tree:add(f.tipi_variant, buffer(offset, 1))
+        tree:add(f.unknown, buffer(offset, 1))
         offset = offset + 1
     elseif type == 0x0E then -- Audio Source
         tree:add_le(f.ether, buffer(offset, 6)) -- TODO: add_le does not actually swap byteorder for f.ether
         offset = offset + 6
 
-        tree:add(f.unknown, buffer(offset, 1))
+        tree:add(f.audio_source_status, buffer(offset, 1))
         offset = offset + 1
     elseif type == 0x0F then -- Set Notification Filter
         tree:add(f.unknown, buffer(offset, 4))
@@ -78,21 +80,44 @@ function parse.msg(buffer, pinfo, tree, f)
         offset = offset + 1
 
         tree:add(f.opack_data, buffer(offset, len-1))
-        offset = offset + len-1
+        offset = offset + len - 1
+    elseif type == 0x12 then -- Easy Pair Request
+        tree:add_le(f.ether, buffer(offset, 6)) -- TODO: add_le does not actually swap byteorder for f.ether
+        offset = offset + 6
+
+        tree:add(f.unknown, buffer(offset, 1))
+        offset = offset + 1
+
+        tree:add(f.unknown, buffer(offset, 16))
+        offset = offset + 16
+    elseif type == 0x13 then -- Easy Pair
+        tree:add_le(f.ether, buffer(offset, 6)) -- TODO: add_le does not actually swap byteorder for f.ether
+        offset = offset + 6
+
+        tree:add(f.unknown, buffer(offset, 1))
+        offset = offset + 1
     elseif type == 0x14 then -- Connect Priority List
         local count = buffer(offset, 1):uint()
         offset = offset + 1
 
-        for i = 0, count-1, 1 do
+        for i = 0, count - 1, 1 do
             tree:add_le(f.ether, buffer(offset, 6)) -- TODO: add_le does not actually swap byteorder for f.ether
             offset = offset + 6
         end
+    elseif type == 0x15 then -- Triangle/Magnet Link Status Request
+        tree:add_le(f.ether, buffer(offset, 6)) -- TODO: add_le does not actually swap byteorder for f.ether
+        offset = offset + 6
+    elseif type == 0x16 then -- Triangle/Magnet Link Status
+        tree:add_le(f.ether, buffer(offset, 6)) -- TODO: add_le does not actually swap byteorder for f.ether
+        offset = offset + 6
+
+        tree:add(f.unknown, buffer(offset, 1))
+        offset = offset + 1
     elseif type == 0x1D then -- Information
         tree:add(f.unknown, buffer(offset, 1))
         offset = offset + 1
 
         local length = buffer(offset, 2):le_uint()
-        --tree:add_le(aacp_proto, buffer(offset, 2), "Length:", length)
         offset = offset + 2
 
         tree:add_le(f.unknown, buffer(offset, 2))
@@ -100,68 +125,65 @@ function parse.msg(buffer, pinfo, tree, f)
 
         local i = 0
         while offset <= length do
-            if not (i == 11 or i == 12) then
+            if (i == 11 or i == 12) then -- UUID fixed length (plus one unknown byte? maybe a character that wraps both uuids)
+                tree:add(aacp_proto, buffer(offset, 17), enums.information_string[i] .. ": " ..buffer(offset, 17))
+                offset = offset + 17
+            else
                 local string_len = buffer(offset):strsize(ENC_UTF_8)
                 tree:add(aacp_proto, buffer(offset, string_len), enums.information_string[i] .. ": " .. buffer(offset, string_len):string(ENC_UTF_8))
                 offset = offset + string_len
-            else -- UUID fixed length (plus one unknown byte? maybe a character that wraps both uuids)
-                tree:add(aacp_proto, buffer(offset, 17), enums.information_string[i] .. ": " .. buffer(offset, 17))
-                offset = offset + 17
             end
 
             i = i + 1
         end
     elseif type == 0x17 then -- Buddy Command
-        -- smells a bit like Protobuf here but can't figure it out yet
-        tree:add(f.unknown, buffer(offset, 4))
-        offset = offset + 4
+        offset = offset + Dissector.get("rtbuddy"):call(buffer(offset):tvb(), pinfo, tree)
+    elseif type == 0x1A then -- Rename
+        tree:add(f.unknown, buffer(offset, 1))
+        offset = offset + 1
 
-        local buddylen = buffer(offset, 2):le_uint()
-        tree:add_le(aacp_proto, buffer(offset, 2), "Length:", buddylen)
+        local name_len = buffer(offset, 2):le_uint()
         offset = offset + 2
 
-        tree:add(f.unknown, buffer(offset, buddylen))
-        offset = offset + buddylen
+        tree:add(f.rename_string, buffer(offset, name_len))
+        offset = offset + name_len
     elseif type == 0x1B then -- Timestamp
-        tree:add(f.unknown, buffer(offset, 8)) -- TODO: its probably just NSTime
+        tree:add_le(f.timestamp, buffer(offset, 8))
         offset = offset + 8
 
         local len = buffer(offset, 2):le_uint()
-        -- tree:add_le(aacp_proto, buffer(offset, 2), "Length:", len)
         offset = offset + 2
 
-        tree:add(aacp_proto, buffer(offset, len), buffer(offset, len):string())
+        tree:add(f.timestamp_string, buffer(offset, len))
         offset = offset + len
+    elseif type == 0x1F then -- Notify Session State?
+        tree:add(f.unknown, buffer(offset, 5))
+        offset = offset + 5
     elseif type == 0x21 then -- Unknown
         tree:add(f.unknown, buffer(offset, 2))
         offset = offset + 2
 
         local len = buffer(offset, 2):le_uint()
-        -- tree:add_le(aacp_proto, buffer(offset, 2), "Length:", len)
         offset = offset + 2
 
         tree:add(f.unknown, buffer(offset, len))
         offset = offset + len
     elseif type == 0x23 then -- Case Info
         -- not sure about alignment yet but it contains the following values:
-        -- messageVersion
-        -- vendorID
-        -- productID
-        -- vendorIDSource
-        -- caseColor
+        -- caseColor 1 byte?
         -- caseVersion
         -- reserved
         -- CaseInfoName
-        tree:add_le(f.unknown, buffer(offset, 1))
+        tree:add(f.unknown, buffer(offset, 1)) -- messageVersion?
         offset = offset + 1
 
-        tree:add_le(f.unknown, buffer(offset, 2))
+        tree:add_le(f.unknown, buffer(offset, 2)) -- vendorID
         offset = offset + 2
 
-        tree:add_le(f.unknown, buffer(offset, 4))
+        tree:add_le(f.unknown, buffer(offset, 4)) -- productID (4 bytes for some reason?)
         offset = offset + 4
 
-        tree:add_le(f.unknown, buffer(offset, 2))
+        tree:add_le(f.unknown, buffer(offset, 2)) -- vendorIDSource
         offset = offset + 2
 
         tree:add_le(f.unknown, buffer(offset, 4))
@@ -183,18 +205,16 @@ function parse.msg(buffer, pinfo, tree, f)
         offset = offset + 3
 
         local serial_len = buffer(offset, 1):uint()
-        -- tree:add(aacp_proto, buffer(offset, 1), "Serial Length:", serial_len)
         offset = offset + 1
 
         tree:add(aacp_proto, buffer(offset, serial_len), buffer(offset, serial_len):string())
         offset = offset + serial_len
 
-        local len = buffer(offset, 2):le_uint()
-        -- tree:add_le(aacp_proto, buffer(offset, 2), "Length:", len)
+        local data_len = buffer(offset, 2):le_uint()
         offset = offset + 2
 
-        tree:add(f.unknown, buffer(offset, len))
-        offset = offset + len
+        tree:add(f.unknown, buffer(offset, data_len))
+        offset = offset + data_len
     elseif type == 0x29 then -- Set Country Code
         tree:add(f.unknown, buffer(offset, 8))
         offset = offset + 8
@@ -203,7 +223,6 @@ function parse.msg(buffer, pinfo, tree, f)
         offset = offset + 1
 
         local len = buffer(offset, 2):le_uint()
-        -- tree:add_le(aacp_proto, buffer(offset, 2), "Length:", len)
         offset = offset + 2
 
         tree:add(f.unknown, buffer(offset, 8))
@@ -216,38 +235,35 @@ function parse.msg(buffer, pinfo, tree, f)
         offset = offset + 2
 
         local len = buffer(offset, 2):le_uint()
-        tree:add_le(f.unknown, buffer(offset, 2))
         offset = offset + 2
 
         tree:add(f.unknown, buffer(offset, len))
         offset = offset + len
     elseif type == 0x2E then -- Connected Devices
-        tree:add(f.unknown, buffer(offset, 1)) -- audioStatus?
+        tree:add(f.unknown, buffer(offset, 1))
         offset = offset + 1
 
-        tree:add(f.unknown, buffer(offset, 1)) -- sourceCount?
+        tree:add(f.unknown, buffer(offset, 1))
         offset = offset + 1
 
         local mac_count = buffer(offset, 1):uint()
-        tree:add(aacp_proto, buffer(offset, 1), "TiPi List Count: ", mac_count)
         offset = offset + 1
 
         for i = 0, mac_count - 1, 1 do
-            tree:add_le(f.ether, buffer(offset, 6)) -- big endian mac!
+            local mactree = tree:add(f.ether, buffer(offset, 6))
             offset  = offset + 6
 
-            local state = buffer(offset, 1):uint()
-            tree:add(aacp_proto, buffer(offset, 1), "connectionStatus:", enums.tipi_connection_status[state])
+            mactree:add(f.unknown, buffer(offset, 1))
             offset = offset + 1
 
-            tree:add(aacp_proto, buffer(offset, 1), "stateFlags")
+            mactree:add(f.unknown, buffer(offset, 1))
             offset = offset + 1
         end
     elseif type == 0x30 then -- Magic Keys Request
         tree:add(f.unknown, buffer(offset, 2))
         offset = offset + 2
     elseif type == 0x31 then -- Magic Keys
-        offset = offset + magicpairing_key_message(buffer(offset), pinfo, tree, f)
+        offset = offset + key_message(buffer(offset), pinfo, tree)
     elseif type == 0x40 then -- Unknown
         tree:add_le(f.unknown, buffer(offset, 2))
         offset = offset + 2
@@ -259,21 +275,22 @@ function parse.msg(buffer, pinfo, tree, f)
         offset = offset + 2
     elseif type == 0x44 then -- Send Smart Routing 2.0 Info
         local len = buffer(offset, 2):le_uint()
-        --tree:add_le(aacp_proto, buffer(offset, 2), "Length:", len)
         offset = offset + 2
 
         tree:add(f.unknown, buffer(offset, len))
         offset = offset + len
     elseif type == 0x4B then -- Conversational Awareness
         local len = buffer(offset, 2):le_uint()
-        tree:add_le(aacp_proto, buffer(offset, 2), "Length:", len)
         offset = offset + 2
 
-        tree:add(f.unknown, buffer(offset, len))
-        offset = offset + len
+        local subtype = buffer(offset, 1):uint()
+        tree:add(f.unknown, buffer(offset, 1))
+        offset = offset + 1
+
+        tree:add(f.unknown, buffer(offset, len - 1))
+        offset = offset + len - 1
     elseif type == 0x4C then -- Adaptive Volume Message
         local len = buffer(offset, 2):le_uint()
-        tree:add_le(aacp_proto, buffer(offset, 2), "Length:", len)
         offset = offset + 2
 
         tree:add(f.unknown, buffer(offset, len))
@@ -285,11 +302,12 @@ function parse.msg(buffer, pinfo, tree, f)
         local len = buffer(offset, 2):le_uint()
         offset = offset + 2
 
-        tree:add(f.uarp_data, buffer(offset, len))
-        offset = offset + len
+        offset = offset + Dissector.get("uarp"):call(buffer(offset, len):tvb(), pinfo, tree)
+    elseif type == 0x52 then -- Source Context
+        tree:add(f.unknown, buffer(offset, 5))
+        offset = offset + 5
     elseif type == 0x53 then -- PME Config
         local len = buffer(offset, 2):le_uint()
-        tree:add_le(aacp_proto, buffer(offset, 2), "Length:", len)
         offset = offset + 2
 
         tree:add(f.unknown, buffer(offset, len))
@@ -303,32 +321,32 @@ function parse.msg(buffer, pinfo, tree, f)
             local bandLow = buffer(offset + 1, 1):uint()
             local bandHigh = buffer(offset + 2, 1):uint()
 
-            tree:add_le(aacp_proto, buffer(offset, 3),
-                "Band " .. enums.band_code[bandIndex] .. ": Low " .. bandLow .. " / High " .. bandHigh)
+            tree:add_le(aacp_proto, buffer(offset, 3), "Band " .. enums.band_code[bandIndex] .. ": Low " .. bandLow .. " / High " .. bandHigh)
             offset = offset + 3
         end
-    elseif type == 0x55 then -- Unknown -- almost always after Audio Source. some form of audio state bools?
+    elseif type == 0x55 then -- Unknown; almost always after Audio Source. some form of audio state bools?
         tree:add(f.unknown, buffer(offset, 4))
         offset = offset + 4
+    elseif type == 0x57 then  -- Sleep Detection Update
+        tree:add(f.unknown, buffer(offset, 5))
+        offset = offset + 5
     elseif type == 0x58 then -- DoAP Microphone Stream?
         local subtype = buffer(offset, 2):le_uint()
-        local subtree = tree:add_le(f.unknown, buffer(offset, 2), subtype, "subtype:", subtype) -- Type
+        tree:add_le(f.unknown, buffer(offset, 2), subtype, "subtype:", subtype) -- Type
         offset = offset + 2
 
         local sublength = buffer(offset, 2):le_uint()
-        --tree:add_le(f.unknown, buffer(offset, 2), sublength, "length:", sublength) -- Length
         offset = offset + 2
 
         if subtype == 0x0001 then
-            tree:add_le(f.unknown, buffer(offset, 2)) -- static unknown
+            tree:add_le(f.unknown, buffer(offset, 2), buffer(offset, 2):uint(), "decompressed size:", buffer(offset, 2):uint())
             offset = offset + 2
 
             local subtype2 = buffer(offset, 2):le_uint()
             tree:add_le(f.unknown, buffer(offset, 2), subtype2, "subtype2:", subtype2) -- Type
             offset = offset + 2
 
-            local length2 = buffer(offset, 2):le_uint()
-            --tree:add_le(f.unknown, buffer(offset, 2), length2, "length2:", length2) -- Length
+            local sublength2 = buffer(offset, 2):le_uint()
             offset = offset + 2
 
             if subtype2 == 0x0001 then
@@ -337,7 +355,7 @@ function parse.msg(buffer, pinfo, tree, f)
                 offset = offset + 2
 
                 local time1 = buffer(offset, 2):le_uint()
-                tree:add_le(f.unknown, buffer(offset, 2), time1, "time (ms):", time1) -- YUP
+                tree:add_le(f.unknown, buffer(offset, 2), time1, "time (ms):", time1)
                 offset = offset + 2
 
                 local weird2 = buffer(offset, 2):le_uint()
@@ -348,30 +366,27 @@ function parse.msg(buffer, pinfo, tree, f)
                 tree:add_le(f.unknown, buffer(offset, 4), samplecount, "samplecount:", samplecount)
                 offset = offset + 4
 
-                local weird3 = buffer(offset, 2):le_uint()
-                tree:add_le(f.unknown, buffer(offset, 2), weird3, "weird3:", weird3)
+                tree:add_le(f.unknown, buffer(offset, 2)) -- instantaneous bitrate?
                 offset = offset + 2
 
                 offset = offset + Dissector.get("opus"):call(buffer(offset):tvb(), pinfo, tree)
             end
 
         end
-
-
+    else
     end
 
     return offset
 end
 
-
-function magicpairing_key_message(buffer, pinfo, tree, f)
+function key_message(buffer, pinfo, tree)
     local offset = 0
 
     local key_count = buffer(offset, 1):uint()
     tree:add(f.keycount, buffer(offset, 1))
     offset = offset + 1
 
-    for i = 0, key_count-1, 1 do
+    for i = 0, key_count - 1, 1 do
         local key = tree:add_le(f.keytype, buffer(offset, 2))
         offset = offset + 2
 
@@ -381,6 +396,28 @@ function magicpairing_key_message(buffer, pinfo, tree, f)
 
         key:add(f.key, buffer(offset, keylen))
         offset = offset + keylen
+    end
+
+    return offset
+end
+
+function capabilities(buffer, pinfo, tree)
+    local offset = 0
+
+    local capability_count = buffer(offset, 1):uint()
+    offset = offset + 1
+
+    for i = 0, capability_count - 1, 1 do
+        local cap = buffer(offset, 1):uint()
+        tree:add(f.capability, buffer(offset, 1))
+        offset = offset + 1
+
+        -- capability with 4 byte value length
+        if (cap == 0x03 or cap == 0x04 or cap == 0x06 or cap == 0x07 or cap == 0x30) then
+            offset = offset + 4
+        else -- capability with 1 byte value length
+            offset = offset + 1
+        end
     end
 
     return offset

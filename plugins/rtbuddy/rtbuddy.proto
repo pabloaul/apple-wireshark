@@ -1,0 +1,66 @@
+syntax = "proto3";
+package rtbuddy;
+
+enum ServiceType {
+    WTF = 0;
+    DRVCOMM = 1;
+    TTR = 2;
+    ANALYTICS = 3;
+    ACTIN = 4;
+    KADABRA = 5;
+    MANDO = 6;
+    IED = 7;
+    NEO = 8;
+    NEORELAY = 9;
+    COMM = 10;
+    ACCEL = 11;
+    GYRO = 12;
+    PDR = 13;
+    ACTIVITY = 14;
+    CMA = 15;
+    DEVMOTION6 = 16;
+    SPL0 = 17;
+    HOSTLIBHID = 18;
+    HEARTRATE = 19;
+
+    UNKNOWN_82 = 82;
+  }
+
+message Unknown {
+
+}
+
+message Command {
+    ServiceType service = 1;
+
+    bytes payload = 3;
+}
+
+message Descriptor {
+    ServiceType service = 1;
+    bytes descriptor = 2;
+}
+
+message TypeAck {
+    ServiceType service = 1;
+}
+
+message ServiceSetting {
+    ServiceType service = 1;
+    int32 two = 2; // value >=3 crashed the airpods
+    bytes configuration = 3;
+}
+
+message SensorDataWX {
+  int32 seq = 1;
+  int32 log_type = 2;
+  bytes another_sensor_stream = 3;
+  Unknown request_all_descriptors = 4;
+  Descriptor descriptor = 5;
+
+  Command cmd = 7;
+  ServiceSetting service_settings = 8; // configuring/enabling settings
+  TypeAck idk_start_ack = 9; // initial thing?
+
+  TypeAck cmd_ack = 12;
+}

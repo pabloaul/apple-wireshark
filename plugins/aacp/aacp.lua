@@ -1,33 +1,11 @@
-enums = require("aacp_enums")
-parse_message = require("aacp_parse_message")
-
 aacp_proto = Proto("aacp", "Advanced Accessory Control Profile")
 -- tested with AACP version 1.2/1.3
 
-local f = aacp_proto.fields
--- AACP:
-    f.type = ProtoField.uint16("aacp.type", "Type", base.HEX, enums.type)
-    f.service = ProtoField.uint16("aacp.service", "Service", base.DEC)
-    f.status = ProtoField.uint16("aacp.status", "Status", base.HEX)
-    f.major = ProtoField.uint16("aacp.major", "Major Version", base.DEC)
-    f.minor = ProtoField.uint16("aacp.minor", "Minor Version", base.DEC)
-    f.features = ProtoField.uint64("aacp.features", "Feature Flags", base.HEX)
--- AACP/Message:
-    f.message_type = ProtoField.uint16("aacp.message_type", "Type", base.HEX, enums.message_type)
-    f.tipi_variant = ProtoField.uint8("aacp.tipi_variant", "TiPi Variant", base.HEX, enums.tipi_variant)
--- AACP/Message/Control:
-    f.control_type = ProtoField.uint8("aacp.control_type", "Type", base.HEX, enums.control_type)
--- AACP/Message/MagicPairing:
-    f.keytype = ProtoField.uint16("aacp.mp_keytype", "Key Type", base.HEX, enums.mp_key_type)
-    f.keylen = ProtoField.uint16("aacp.mp_keylen", "Key Length", base.DEC)
-    f.keycount = ProtoField.uint8("aacp.mp_keycount", "Key Count", base.DEC)
-    f.key = ProtoField.bytes("aacp.mp_key", "Key", base.NONE)
--- Misc:
-    f.ether = ProtoField.ether("aacp.mac", "MAC Address")
-    f.opack_data = ProtoField.protocol("aacp.opack_data", "OPACK Data")
-    f.uarp_data = ProtoField.protocol("aacp.uarp_data", "UARP Data")
-    f.unknown = ProtoField.bytes("aacp.unknown", "Unknown", base.NONE)
-    f.data = ProtoField.bytes("aacp.data", "Trailing Data", base.NONE)
+local f = require("aacp_fields")
+local enums = require("aacp_enums")
+local parse_message = require("aacp_parse_message")
+
+aacp_proto.experts.incomplete = ProtoExpert.new("aacp_proto.incomplete", "Unparsed Data", expert.group.UNDECODED, expert.severity.NOTE)
 
 function aacp_proto.dissector(buffer, pinfo, tree)
     if buffer():len() < 4 then return 0 end -- skip if header is missing
@@ -73,10 +51,11 @@ function aacp_proto.dissector(buffer, pinfo, tree)
         offset = offset + 2
     elseif type == 0x04 then -- Message
         local message_tree = subtree:add(aacp_proto, buffer(offset), "Message")
-        offset = offset + parse_message.msg(buffer(offset), pinfo, message_tree, f)
+        offset = offset + parse_message.msg(buffer(offset), pinfo, message_tree)
     end
 
     if buffer(offset):len() ~= 0 then -- trailing data
+  		subtree:add_proto_expert_info(aacp_proto.experts.incomplete, "Undecoded")
         subtree:add(f.data, buffer(offset))
     end
 
