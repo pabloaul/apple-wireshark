@@ -24,8 +24,8 @@ local f = magnet_proto.fields
     f.unknown = ProtoField.bytes("magnet.data", "Unknown Data", base.NONE)
 
 local service_to_dissector = { -- mapping magnet service name to dissector name
-    ["CLink"] = "clink",
-    ["CLinkHP"] = "clink",
+    ["CLink"] = "rapport",
+    ["CLinkHP"] = "rapport",
     ["com.apple.BT.TS"] = "btts",
     ["com.apple.terminusLink"] = "nrlp",
     ["com.apple.terminusLink.urgent"] = "nrlp",
