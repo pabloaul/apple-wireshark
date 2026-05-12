@@ -32,7 +32,7 @@ function rtbuddy_proto.dissector(buffer, pinfo, tree)
     offset = offset + 2
 
     if descriptor == 0x00100000 then -- SensorDataWX
-        pinfo.private["pb_msg_type"] = "message,buddy.SensorDataWX"
+        pinfo.private["pb_msg_type"] = "message,rtbuddy.SensorDataWX"
 
         -- HACK: we need to strip the last two bytes if bit 0x4 is set in logtype.
         -- it's kind of a chicken and egg problem because we would have to parse the protobuf
