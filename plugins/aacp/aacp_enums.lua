@@ -77,6 +77,7 @@ e.message_type = {
     [0x59] = "Dynamic End Of Charge",
     [0x60] = "Personal Translation",
     [0x62] = "Unknown",
+    [0x63] = "EQ",
 }
 -- 0x02 Capabilities
     e.capabilities = {
@@ -114,6 +115,7 @@ e.message_type = {
         [0x34] = "wiredLosslessAudioCapability?",
         [0x35] = "smartRoutingVersion?",
         [0x36] = "farFieldUplinkModernCapability?",
+        [0x37] = "customEQCapability?",
         [0x40] = "spatialAudioSupport?",
         [0x50] = "callManagementCapability?",
         [0x60] = "?",
