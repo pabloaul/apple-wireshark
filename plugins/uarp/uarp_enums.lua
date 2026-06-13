@@ -1,35 +1,35 @@
 local e =  {} -- init module table
 
 e.message_type = {
-    [0x0000] = "Sync",
-    [0x0001] = "Version Discovery Request",
-    [0x0002] = "Version Discovery Response",
-    [0x0003] = "Information Request",
-    [0x0004] = "Information Response",
-    [0x0005] = "Asset Available Notification",
-    [0x0006] = "Data Request",
-    [0x0007] = "Data Response",
+    [0x0000] = "Sync", -- [0b]
+    [0x0001] = "Version Discovery Request", -- [2b] version?
+    [0x0002] = "Version Discovery Response", -- [2b] status? [2b] version?
+    [0x0003] = "Information Request", -- [4b] info id?
+    [0x0004] = "Information Response", -- [2b] status? [4b] info id? [2b] ? [2b] length [xb] data
+    [0x0005] = "Asset Available Notification", -- [4b] asset name? [2b] ? [2b] asset id? [4b] ? [4b] ? [4b] ? [8b] ? [2b] ?
+    [0x0006] = "Data Request", -- [2b] asset ID [4b] binary offset [2b] length
+    [0x0007] = "Data Response", -- [2b] status? [2b] asset ID [4b] binary offset [2b] length [2b] length again??? [xb] data
     [0x0008] = "Asset Data Transfer Notification",
-    [0x0009] = "Asset Processing Notification",
-    [0x000A] = "Apply Staged Assets Request",
-    [0x000B] = "Apply Staged Assets Response",
+    [0x0009] = "Asset Processing Notification", -- [2b] asset id? [2b] reason??
+    [0x000A] = "Apply Staged Assets Request", -- [0b]
+    [0x000B] = "Apply Staged Assets Response", -- [2b] firmware_application_status [2b] ?
     [0x000C] = "Asset Rescinded Notification",
-    [0x000D] = "Asset Available Notification Ack",
+    [0x000D] = "Asset Available Notification Ack", -- identical to "asset available notification"
     [0x000E] = "Asset Data Transfer Notification Ack",
-    [0x000F] = "Asset Processing Notification Ack",
+    [0x000F] = "Asset Processing Notification Ack", -- [2b] asset id? [2b] reason??
     [0x0010] = "Asset Rescinded Notification Ack",
-    [0x0011] = "Dynamic Asset Solicitation",
-    [0x0012] = "Dynamic Asset Solicitation Ack",
+    [0x0011] = "Dynamic Asset Solicitation", -- [4b] asset name?
+    [0x0012] = "Dynamic Asset Solicitation Ack", -- [4b] status? [4b] asset name?
     [0x0013] = "Dynamic Asset PreProcessing Notification",
     [0x0014] = "Dynamic Asset PreProcessing Notification Ack",
     [0x0015] = "Downstream Endpoint Discovery",
     [0x0016] = "Downstream Endpoint Discovery Ack",
-    [0x0017] = "Downstream Endpoint Reachable",
-    [0x0018] = "Downstream Endpoint Reachable Ack",
+    [0x0017] = "Downstream Endpoint Reachable", -- [2b] node id?
+    [0x0018] = "Downstream Endpoint Reachable Ack", -- [2b] status? [2b] node id?
     [0x0019] = "Downstream Endpoint Unreachable",
     [0x001A] = "Downstream Endpoint Unreachable Ack",
-    [0x001B] = "Downstream Endpoint Message",
-    [0x001C] = "Downstream Endpoint Message Ack",
+    [0x001B] = "Downstream Endpoint Message", -- [2b] node id? [xb] uarp
+    [0x001C] = "Downstream Endpoint Message Ack", -- [2b] status? [2b] node id?
     [0x001D] = "No Firmware Update Available",
     [0x001E] = "No Firmware Update Available Ack",
     [0x001F] = "Endpoint Discovery Request",
@@ -41,7 +41,7 @@ e.message_type = {
     [0x0025] = "Endpoint Bulk Information Response",
     [0x0026] = "Endpoint Bulk Information Response Ack",
 
-    [0xFFFF] = "Vendor Specific",
+    [0xFFFF] = "Vendor Specific", -- [4b] ??? [1b] opcode? (0x21) [4b] status? [4b] register? [4b] len [xb] data
 }
 
 e.accessory_property = {
@@ -89,6 +89,129 @@ e.accessory_property = {
     [0x2A] = "ecid data",
     [0x2B] = "nonce seed",
     [0x2C] = "nonce hash",
+}
+
+e.firmware_staging_completion_status = {
+    [0x00] = "successful",
+    [0x01] = "staging interrupted",
+    [0x02] = "staging failed",
+    [0x03] = "accessory disconnect",
+    [0x04] = "canceled by client",
+    [0x05] = "canceled by accessory",
+    [0x06] = "corrupt",
+    [0x07] = "asset not found",
+    [0x08] = "denied",
+    [0x09] = "denied (low battery)",
+    [0x0A] = "denied (priority activity)",
+    [0x0B] = "denied (same version staged)",
+    [0x0C] = "denied (same version active)",
+    [0x0D] = "denied (higher version staged)",
+    [0x0E] = "denied (higher version active)",
+    [0x0F] = "denied (better transport)",
+    [0x10] = "denied (higher version)",
+    [0x11] = "denied (processing error)",
+    [0x12] = "denied (device error)",
+    [0x13] = "denied (metadata overflow)",
+    [0x14] = "denied (unsupported asset tag)",
+    [0x15] = "denied (cancelled asset tag)",
+    [0x16] = "denied (update in progress)",
+    [0x17] = "abandoned (low battery)",
+    [0x18] = "abandoned (priority activity)",
+    [0x19] = "abandoned (same version staged)",
+    [0x1A] = "abandoned (same version active)",
+    [0x1B] = "abandoned (higher version staged)",
+    [0x1C] = "abandoned (higher version active)",
+    [0x1D] = "abandoned (better transport)",
+    [0x1E] = "abandoned (higher version)",
+    [0x1F] = "abandoned (processing error)",
+    [0x20] = "abandoned (device error)",
+    [0x21] = "abandoned (metadata overflow)",
+    [0x22] = "abandoned (unsupported asset tag)",
+    [0x23] = "abandoned (cancelled asset tag)",
+    [0x24] = "abandoned (update in progress)",
+    [0x25] = "abandoned (personalization failure)",
+}
+
+e.firmware_application_status = {
+    [0x00] = "success",
+    [0x01] = "failure",
+    [0x02] = "needs restart",
+    [0x03] = "nothing staged",
+    [0x04] = "staging incomplete",
+    [0x05] = "busy",
+}
+
+e.asset_location = {
+    [0x00] = "local file path",
+    [0x01] = "public icloud",
+    [0x02] = "public iCloud staging",
+    [0x03] = "mobile asset server",
+    [0x04] = "swe mount",
+    [0x05] = "UAT public iCloud",
+    [0x06] = "UAT public iCloud staging",
+    [0x07] = "beta public iCloud",
+    [0x08] = "beta public iCloud staging",
+    [0x09] = "local memory blob",
+    [0x0A] = "on accessory",
+    [0x0B] = "basejumper",
+    [0x0C] = "livability",
+    [0x0D] = "mesu",
+    [0x0E] = "customer staging",
+    [0x0F] = "unrecognized",
+    [0x10] = "unrecognized",
+    [0x11] = "dropbox path",
+}
+
+e.asset_download_status = {
+    [0x00] = "idle",
+    [0x01] = "success",
+    [0x02] = "failed",
+}
+
+e.asset_validation_status = {
+    [0x00] = "skipped",
+    [0x01] = "success",
+    [0x02] = "failed",
+}
+
+e.firmware_update_availability_status = {
+    [0x00] = "none",
+    [0x01] = "on asset server",
+    [0x02] = "downloading",
+    [0x03] = "on local storage",
+    [0x04] = "on dropbox",
+    [0x05] = "in memory",
+    [0x06] = "not found",
+    [0x07] = "version mismatch",
+    [0x08] = "on latest version",
+    [0x09] = "ota disabled",
+}
+
+e.accessory_transport = {
+    [0x00] = "none",
+    [0x01] = "HID",
+    [0x02] = "USB",
+    [0x03] = "bluetooth",
+    [0x04] = "IP",
+    [0x05] = "serial",
+    [0x06] = "other",
+    [0x07] = "hds",
+    [0x08] = "USB-PD",
+    [0x09] = "B2PHID",
+    [0x0A] = "IIC",
+}
+
+e.accessory_hardware_fusing = {
+    [0x00] = "unfused",
+    [0x01] = "dev",
+    [0x02] = "prod",
+}
+
+e.hash_algorithm = {
+    [0x00] = "none",
+    [0x01] = "sha-256",
+    [0x02] = "sha-384",
+    [0x03] = "sha-512",
 }
 
 return e

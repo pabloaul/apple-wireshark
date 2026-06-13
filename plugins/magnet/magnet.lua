@@ -196,7 +196,7 @@ function magnet_proto.dissector(buffer, pinfo, tree)
         end
     elseif cmd == 0x91 then -- CoreLocation Durian Command
         if Dissector.get("cldurian") ~= nil then
-            Dissector.get("cldurian"):call(buffer(offset):tvb(), pinfo, tree)
+            offset = offset + Dissector.get("cldurian"):call(buffer(offset):tvb(), pinfo, tree)
         end
     end
 
