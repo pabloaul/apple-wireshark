@@ -373,6 +373,31 @@ function parse.msg(buffer, pinfo, tree)
             end
 
         end
+    elseif type == 0x63 then -- EQ
+        local len = buffer(offset, 2):le_uint()
+        tree:add_le(f.unknown, buffer(offset, 2), len, "length?:", len)
+        offset = offset + 2
+
+        local unknown1 = buffer(offset, 1):uint()
+        tree:add(f.unknown, buffer(offset, 1), unknown1, "unknown1:", unknown1)
+        offset = offset + 1
+
+        local state = buffer(offset, 1):uint()
+        tree:add(f.unknown, buffer(offset + 2, 1), state, "state:", state)
+        offset = offset + 1
+
+
+        local low = buffer(offset, 1):uint()
+        tree:add(f.unknown, buffer(offset, 1), low, "low:", low)
+        offset = offset + 1
+
+        local mid = buffer(offset, 1):uint()
+        tree:add(f.unknown, buffer(offset, 1), mid, "mid:", mid)
+        offset = offset + 1
+
+        local high = buffer(offset, 1):uint()
+        tree:add(f.unknown, buffer(offset, 1), high, "high:", high)
+        offset = offset + 1
     else
     end
 
