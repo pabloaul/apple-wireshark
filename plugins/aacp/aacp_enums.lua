@@ -76,7 +76,9 @@ e.message_type = {
     [0x58] = "Microphone Stream?",
     [0x59] = "Dynamic End Of Charge",
     [0x60] = "Personal Translation",
-    [0x62] = "Unknown",
+    [0x62] = "Set Feature Flags",
+    [0x63] = "EQ",
+    [0x64] = "?",
 }
 -- 0x02 Capabilities
     e.capabilities = {
