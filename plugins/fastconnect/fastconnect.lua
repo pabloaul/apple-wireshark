@@ -79,19 +79,20 @@ function parse_descriptor(buffer, pinfo, tree)
     local offset = 0
 
     while offset < buffer():len() do
+        local descriptor = buffer(offset, 4):le_uint()
         local descriptortree = tree:add_le(f.descriptor, buffer(offset, 4))
         offset = offset + 4
 
         local payload_len = buffer(offset, 2):le_uint()
         offset = offset + 2
 
-        offset = offset + parse_descriptor_payload(buffer(offset, payload_len), pinfo, descriptortree)
+        offset = offset + parse_descriptor_payload(buffer(offset, payload_len), pinfo, descriptortree, descriptor)
     end
 
     return offset
 end
 
-function parse_descriptor_payload(buffer, pinfo, tree)
+function parse_descriptor_payload(buffer, pinfo, tree, descriptor)
     if buffer():len() == 0 then return 0 end
 	local offset = 0
 
@@ -102,6 +103,8 @@ function parse_descriptor_payload(buffer, pinfo, tree)
 
         local len = buffer(offset, 1):uint()
         offset = offset + 1
+
+        annotate_fc_setting_types(typetree, type, descriptor)
 
         if type == 0x01 then
             local cid = buffer(offset, 2):le_uint()
@@ -121,6 +124,27 @@ function parse_descriptor_payload(buffer, pinfo, tree)
     end
 
     return offset
+end
+
+function annotate_fc_setting_types(tree, type, descriptor)
+    tree:append_text(" ")
+
+    if type < 0x10 then -- annotate common FC setting types
+        tree:append_text(enums.fc_common[type])
+        return
+    end
+
+    if descriptor == 0x00000001 then
+        tree:append_text(enums.fc_hfp[type])
+    elseif descriptor == 0x00000008 then
+        tree:append_text(enums.fc_avrcp[type])
+    elseif descriptor == 0x00000010 then
+        tree:append_text(enums.fc_a2dp[type])
+    elseif descriptor == 0x00080000 then
+        tree:append_text(enums.fc_aacp[type])
+    elseif descriptor == 0x00100000 then
+        tree:append_text(enums.fc_gatt[type])
+    end
 end
 
 local l2cap_cid = DissectorTable.get("btl2cap.cid")
