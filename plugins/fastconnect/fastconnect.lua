@@ -6,6 +6,7 @@ local f = fastconnect_proto.fields
     f.state = ProtoField.uint16("fastconnect.state", "State", base.HEX, enums.state)
     f.magic = ProtoField.uint16("fastconnect.magic", "Magic", base.DEC)
     f.cid = ProtoField.uint16("fastconnect.cid", "Channel ID", base.HEX)
+    f.version = ProtoField.uint32("fastconnect.version", "Version", base.HEX)
     f.psm = ProtoField.uint16("fastconnect.psm", "PSM", base.HEX, enums.psm_mapping)
     f.mtu = ProtoField.uint16("fastconnect.mtu", "MTU", base.DEC)
     f.type = ProtoField.uint16("fastconnect.type", "Type", base.DEC, enums.fc_type)
@@ -33,6 +34,39 @@ function fastconnect_proto.dissector(buffer, pinfo, tree)
         DissectorTable.get("btl2cap.cid"):add(cid, Dissector.get("fastconnect"))
         offset = offset + 2
 
+        -- 0x0004 on both airpods and ios, unknown
+        subtree:add(f.unknown, buffer(offset, 2))
+        offset = offset + 2
+
+        subtree:add_le(f.version, buffer(offset, 4))
+        offset = offset + 4
+
+        -- 0x1600... on airpods, 0x1500... on ios
+        subtree:add(f.unknown, buffer(offset, 8))
+        offset = offset + 8
+
+        -- 0xff30fb5e on airpods, 0xc426a000 on ios
+        subtree:add(f.unknown, buffer(offset, 4))
+        offset = offset + 4
+
+        -- 0x08000000 on airpods, varies on ios
+        subtree:add(f.unknown, buffer(offset, 4))
+        offset = offset + 4
+
+        subtree:add(f.unknown, buffer(offset, 2))
+        offset = offset + 2
+
+        subtree:add(f.unknown, buffer(offset, 2))
+        offset = offset + 2
+
+        subtree:add(f.unknown, buffer(offset, 8))
+        offset = offset + 8
+
+        if state == 0x01 then -- initial has two more leading bytes
+            subtree:add(f.unknown, buffer(offset, 2))
+            offset = offset + 2
+        end
+
     elseif state == 0x03 or state == 0x04 or state == 0x05 or state == 0x06 then
         while offset < buffer():len() do
             local type = buffer(offset, 2):le_uint()
@@ -52,7 +86,10 @@ function fastconnect_proto.dissector(buffer, pinfo, tree)
         end
     end
 
-    subtree:add(f.unknown, buffer(offset))
+    if buffer(offset):len() ~= 0 then
+        subtree:add(f.unknown, buffer(offset))
+        offset = offset + buffer(offset):len()
+    end
 end
 
 
