@@ -53,6 +53,7 @@ e.fc_hfp = {
     [0x19] = "DLCI Link", -- msg 4
     [0x1A] = "FC XAPL Feature Supported?", -- msg 3
     [0x1B] = "?", -- msg 3
+    [0x1C] = "?", -- msg 3
 }
 
 e.fc_avrcp = {
@@ -65,10 +66,11 @@ e.fc_gatt = {
 }
 
 e.fc_aacp = {
-    [0x10] = "AACP Version??", -- msg 3,4
+    [0x10] = "AACP Version?", -- msg 3,4
     [0x12] = "?", -- msg 4
-    [0x13] = "Control Commands",
+    [0x13] = "AACP Control Commands",
     [0x14] = "Airpods Info",
+    [0x15] = "?", -- msg 6
     [0x16] = "Bud In Ear State",
     [0x17] = "Role State",
     [0x18] = "Battery State",
