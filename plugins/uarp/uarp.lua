@@ -17,6 +17,13 @@ local f = uarp_proto.fields
     f.data_request_offset = ProtoField.uint32("uarp.data_request_offset", "Data Request Offset", base.HEX)
     f.data_request_length = ProtoField.uint32("uarp.data_request_length", "Data Request Length", base.DEC)
     f.data_actual_length = ProtoField.uint32("uarp.data_actual_length", "Data Actual Length", base.DEC)
+    f.asset_format_version = ProtoField.uint32("uarp.asset_format_version", "Asset Format Version?", base.DEC)
+    f.asset_version_major = ProtoField.uint32("uarp.asset_version_major", "Asset Version Major", base.DEC)
+    f.asset_version_minor = ProtoField.uint32("uarp.asset_version_minor", "Asset Version Minor", base.DEC)
+    f.asset_version_release = ProtoField.uint32("uarp.asset_version_release", "Asset Version Release", base.DEC)
+    f.asset_version_build = ProtoField.uint32("uarp.asset_version_build", "Asset Version Build", base.DEC)
+    f.payload_size = ProtoField.uint32("uarp.payload_size", "Payload Size", base.HEX)
+    f.payload_count = ProtoField.uint32("uarp.payload_count", "Payload Count", base.DEC)
     f.unknown = ProtoField.bytes("uarp.unknown", "Unknown", base.NONE)
 
 function uarp_proto.dissector(buffer, pinfo, tree)
@@ -69,28 +76,28 @@ function uarp_proto.dissector(buffer, pinfo, tree)
         subtree:add(f.asset_tag, buffer(offset, 4))
         offset = offset + 4
 
-        subtree:add(f.unknown, buffer(offset, 2))
+        subtree:add(f.asset_format_version, buffer(offset, 2))
         offset = offset + 2
 
         subtree:add(f.asset_id, buffer(offset, 2))
         offset = offset + 2
 
-        subtree:add(f.unknown, buffer(offset, 4))
+        subtree:add(f.asset_version_major, buffer(offset, 4))
         offset = offset + 4
 
-        subtree:add(f.unknown, buffer(offset, 4))
+        subtree:add(f.asset_version_minor, buffer(offset, 4))
         offset = offset + 4
 
-        subtree:add(f.unknown, buffer(offset, 4))
+        subtree:add(f.asset_version_release, buffer(offset, 4))
         offset = offset + 4
 
-        subtree:add(f.unknown, buffer(offset, 4))
+        subtree:add(f.asset_version_build, buffer(offset, 4))
         offset = offset + 4
 
-        subtree:add(f.unknown, buffer(offset, 4))
+        subtree:add(f.payload_size, buffer(offset, 4))
         offset = offset + 4
 
-        subtree:add(f.unknown, buffer(offset, 2))
+        subtree:add(f.payload_count, buffer(offset, 2))
         offset = offset + 2
     elseif type == 0x06 then -- Data Request
         subtree:add(f.asset_id, buffer(offset, 2))
