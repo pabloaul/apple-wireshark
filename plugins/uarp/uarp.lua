@@ -2,7 +2,7 @@ uarp_proto = Proto("uarp", "Apple Unified Accessory Restore Protocol")
 
 local enums = require("uarp_enums")
 
-local f = rtbuddy_proto.fields
+local f = uarp_proto.fields
     f.type = ProtoField.uint16("uarp.type", "Type", base.HEX, enums.message_type)
     f.length = ProtoField.uint16("uarp.length", "Length", base.DEC)
     f.seq = ProtoField.uint16("uarp.seq", "Sequence", base.DEC)
