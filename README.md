@@ -19,7 +19,7 @@ Exchanges shared secrets which may get synced to iCloud so that other devices ca
 ### Magnet
 Service exchange and connection protocol. Devices advertise available services by name to each other and can initiate a connection on demand. Mostly used by devices like Apple Watch and AirTags but also AirPods to some extent.
 
-### Universal Accessory Restore Protocol
+### Unified Accessory Restore Protocol
 Handles firmware (and other asset) updates for accessories.
 
 ## Installation

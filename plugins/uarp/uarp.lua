@@ -1,4 +1,4 @@
-uarp_proto = Proto("uarp", "Apple Universal Accessory Restore Protocol")
+uarp_proto = Proto("uarp", "Apple Unified Accessory Restore Protocol")
 
 local enums = require("uarp_enums")
 
@@ -23,7 +23,7 @@ function uarp_proto.dissector(buffer, pinfo, tree)
     if buffer():len() == 0 then return end
     pinfo.cols.protocol = uarp_proto.name
 
-    local subtree = tree:add(uarp_proto, buffer(), "Apple Universal Accessory Restore Protocol")
+    local subtree = tree:add(uarp_proto, buffer(), "Apple Unified Accessory Restore Protocol")
     local offset = 0
 
     local type = buffer(offset, 2):uint()
