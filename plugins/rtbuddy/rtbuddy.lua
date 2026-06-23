@@ -1,12 +1,37 @@
 rtbuddy_proto = Proto("rtbuddy", "Apple RTBuddy")
 
 local descriptors = {
-    [0x00000200] = "In Ear Status", -- handleBTAccessoryGetInEarStatusMsg -- primary in case, secondary in case, IED enabled: yes
-    [0x00000400] = "some HID stuff?", -- airpods to ios
-    [0x00000800] = "Module Power Message", -- kCBMsgIdLocalDeviceGetModulePowerMsg
-    [0x00040000] = "Sensor Data V2",
-    [0x00080000] = "Connected Services?",
+    [0x00000001] = "Acoustic",
+    [0x00000002] = "SCP",
+    [0x00000004] = "Buddy",
+    [0x00000008] = "VirtualCLIPrimary",
+
+    [0x00000010] = "VirtualCLISecondary",
+    [0x00000020] = "AppDiagnostics",
+    [0x00000040] = "LoggingTrigger",
+    [0x00000080] = "DebugData",
+
+    [0x00000100] = "Touch",
+    [0x00000200] = "LogConfig", -- (In Ear Status?) handleBTAccessoryGetInEarStatusMsg -- primary in case, secondary in case, IED enabled: yes
+    [0x00000400] = "LogMsg", -- airpods to ios
+    [0x00000800] = "Sensor", -- (Module Power Message?) / kCBMsgIdLocalDeviceGetModulePowerMsg
+
+    [0x00001000] = "SwitchControl",
+    [0x00002000] = "MismatchedBuds",
+    [0x00004000] = "?",
+    [0x00008000] = "B2P",
+
+    [0x00010000] = "Continuity",
+    [0x00020000] = "BatteryHealth",
+    [0x00040000] = "SensorV2",
+    [0x00080000] = "OBCv2", -- Connected Services?
+
     [0x00100000] = "Sensor Data WX",
+    [0x00200000] = "?",
+    [0x00400000] = "?",
+    [0x00800000] = "DigitalEngravingInfo",
+
+    [0x01000000] = "ActiveModeData",
 }
 
 local f = rtbuddy_proto.fields
