@@ -78,7 +78,7 @@ e.message_type = {
     [0x60] = "Personal Translation",
     [0x62] = "Set Feature Flags",
     [0x63] = "EQ",
-    [0x64] = "?",
+    [0x64] = "AppleCare?",
 }
 -- 0x02 Capabilities
     e.capabilities = {
@@ -168,7 +168,7 @@ e.message_type = {
 -- 0x0E Audio Source
     e.audio_source_status = {
         [0x00] = "Idle",
-        [0x01] = "?",
+        [0x01] = "In Call",
         [0x02] = "Playing Media",
         [0x04] = "?",
         [0x06] = "?"
