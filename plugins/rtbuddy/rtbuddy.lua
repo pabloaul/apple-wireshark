@@ -37,6 +37,7 @@ local descriptors = {
 local f = rtbuddy_proto.fields
     f.descriptor = ProtoField.uint32("rtbuddy.descriptor", "Descriptor", base.HEX, descriptors)
     f.length = ProtoField.uint16("rtbuddy.length", "Length", base.DEC)
+    f.plist = ProtoField.string("rtbuddy.plist", "Property List", base.UNICODE)
 
     f.weird_metric = ProtoField.int16("rtbuddy.weird_metric", "Weird Metric")
     f.unknown = ProtoField.bytes("rtbuddy.data", "Unknown Data", base.NONE)
@@ -56,7 +57,21 @@ function rtbuddy_proto.dissector(buffer, pinfo, tree)
     subtree:add_le(f.length, buffer(offset, 2))
     offset = offset + 2
 
-    if descriptor == 0x00100000 then -- SensorDataWX
+    if descriptor == 0x00000800 then -- Sensor
+        subtree:add(f.unknown, buffer(offset, 2))
+        offset = offset + 2
+
+        subtree:add(f.unknown, buffer(offset, 4))
+        offset = offset + 4
+
+        subtree:add(f.unknown, buffer(offset, 2))
+        offset = offset + 2
+
+        if buffer(offset):len() ~= 0 then
+            subtree:add(f.plist, buffer(offset))
+            offset = offset + buffer(offset):len()
+        end
+    elseif descriptor == 0x00100000 then -- SensorDataWX
         pinfo.private["pb_msg_type"] = "message,rtbuddy.SensorDataWX"
 
         -- HACK: we need to strip the last two bytes if bit 0x4 is set in logtype.
