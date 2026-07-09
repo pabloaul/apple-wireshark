@@ -19,6 +19,10 @@ local f = aacp_proto.fields
     f.rename_string = ProtoField.string("aacp.rename_string", "Name", base.UNICODE, "String to rename device to")
     f.timestamp = ProtoField.absolute_time("aacp.timestamp", "Unix Timestamp", base.UTC)
     f.timestamp_string = ProtoField.string("aacp.timestamp_string", "String Timestamp", base.ASCII)
+    f.eq_state = ProtoField.uint8("aacp.eq_state", "EQ State", base.DEC, { "Disabled ('Recommended')", "Enabled ('Custom')" })
+    f.eq_low = ProtoField.uint8("aacp.eq_low", "EQ Low", base.DEC)
+    f.eq_mid = ProtoField.uint8("aacp.eq_mid", "EQ Mid", base.DEC)
+    f.eq_high = ProtoField.uint8("aacp.eq_high", "EQ High", base.DEC)
 -- AACP/Message/MagicPairing:
     f.keytype = ProtoField.uint16("aacp.mp_keytype", "Key Type", base.HEX, enums.mp_key_type)
     f.keylen = ProtoField.uint16("aacp.mp_keylen", "Key Length", base.DEC)
