@@ -1,4 +1,4 @@
-local e =  {} -- init module table
+local e = {} -- init module table
 
 e.type = {
     [0x00] = "Connect",
@@ -121,6 +121,7 @@ e.message_type = {
         [0x40] = "spatialAudioSupport?",
         [0x50] = "callManagementCapability?",
         [0x60] = "?",
+        [0x80] = "?", -- seen on airpods pro 1
         [0x90] = "adaptiveVolumeCapability?",
         [0xa0] = "?",
         [0xb0] = "autoANCCapability?",

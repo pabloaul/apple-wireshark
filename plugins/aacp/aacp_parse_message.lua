@@ -427,13 +427,15 @@ function capabilities(buffer, pinfo, tree)
 
     for i = 0, capability_count - 1, 1 do
         local cap = buffer(offset, 1):uint()
-        tree:add(f.capability, buffer(offset, 1))
+        local capabilitytree = tree:add(f.capability, buffer(offset, 1))
         offset = offset + 1
 
         -- capability with 4 byte value length
         if (cap == 0x03 or cap == 0x04 or cap == 0x06 or cap == 0x07 or cap == 0x30) then
+            capabilitytree:append_text(": "..buffer(offset, 4):le_uint())
             offset = offset + 4
         else -- capability with 1 byte value length
+            capabilitytree:append_text(": "..buffer(offset, 1):uint())
             offset = offset + 1
         end
     end
